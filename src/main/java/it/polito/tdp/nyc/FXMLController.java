@@ -41,7 +41,7 @@ public class FXMLController {
     private TableColumn<?, ?> clV2; // Value injected by FXMLLoader
 
     @FXML // fx:id="cmbBorough"
-    private ComboBox<?> cmbBorough; // Value injected by FXMLLoader
+    private ComboBox<String> cmbBorough; // Value injected by FXMLLoader
 
     @FXML // fx:id="tblArchi"
     private TableView<?> tblArchi; // Value injected by FXMLLoader
@@ -58,11 +58,18 @@ public class FXMLController {
     @FXML
     void doAnalisiArchi(ActionEvent event) {
     	
-
+    	txtResult.appendText(this.model.pesoArchi());
     }
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
+    	
+    	String borgo = cmbBorough.getSelectionModel().getSelectedItem();
+    	this.model.creaGrafo(borgo);
+    	
+    	txtResult.appendText("Grafo creato!\n");
+    	txtResult.appendText("#VERTICI: " + this.model.numeroVertici() + "\n");
+    	txtResult.appendText("#ARCHI: " + this.model.numeroArchi() + "\n");
     	
     }
 
@@ -84,6 +91,9 @@ public class FXMLController {
         assert txtDurata != null : "fx:id=\"txtDurata\" was not injected: check your FXML file 'Scene.fxml'.";
         assert txtProb != null : "fx:id=\"txtProb\" was not injected: check your FXML file 'Scene.fxml'.";
         assert txtResult != null : "fx:id=\"txtResult\" was not injected: check your FXML file 'Scene.fxml'.";
+        model = new Model();
+        cmbBorough.getItems().addAll(this.model.listaBorghi());
+       
 
         
     }
