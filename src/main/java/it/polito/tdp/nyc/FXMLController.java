@@ -1,8 +1,13 @@
 package it.polito.tdp.nyc;
 
 import java.net.URL;
+import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
+
+import it.polito.tdp.nyc.model.Arco;
 import it.polito.tdp.nyc.model.Model;
+import it.polito.tdp.nyc.model.NTA;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -55,27 +60,71 @@ public class FXMLController {
     @FXML // fx:id="txtResult"
     private TextArea txtResult; // Value injected by FXMLLoader
 
+    private boolean grafoCreato = false ;
+    
     @FXML
     void doAnalisiArchi(ActionEvent event) {
-    	
-    	txtResult.appendText(this.model.pesoArchi());
+    	if(!this.grafoCreato) {
+    		txtResult.appendText("Devi prima creare il grafo\n");
+    		return ;
+    	}
+    	List<Arco> archi = model.analisiArchi() ;
+    	for(Arco a: archi) {
+    		txtResult.appendText(a+"\n");
+    	}
     }
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
     	
-    	String borgo = cmbBorough.getSelectionModel().getSelectedItem();
-    	this.model.creaGrafo(borgo);
+    	txtResult.clear();
+    	String borough = cmbBorough.getValue() ;
+    	if(borough==null) {
+    		txtResult.appendText("Seleziona una voce\n");
+    		return ;
+    	}
     	
+    	model.creaGrafo(borough);
     	txtResult.appendText("Grafo creato!\n");
     	txtResult.appendText("#VERTICI: " + this.model.numeroVertici() + "\n");
     	txtResult.appendText("#ARCHI: " + this.model.numeroArchi() + "\n");
+    	this.grafoCreato = true ;
     	
     }
 
     @FXML
     void doSimula(ActionEvent event) {
+    	
+    	if(!this.grafoCreato) {
+    		txtResult.appendText("Devi prima creare il grafo\n");
+    		return ;
+    	}
 
+    	
+    	String probS = txtProb.getText() ;
+    	String durationS = txtDurata.getText() ;
+    	
+    	if(probS.equals("") || durationS.equals("")) {
+    		txtResult.appendText("Errore: parametri obbligatori\n");
+    		return ;
+    	}
+    	
+    	double prob = 0.0 ;
+    	int duration = 0 ;
+
+    	try {
+	    	prob = Double.parseDouble(probS) ;
+	    	duration = Integer.parseInt(durationS) ;
+    	} catch(NumberFormatException e) {
+    		txtResult.appendText("Errore: inserire dati numerici\n");
+    		return ;
+    	}
+    	
+    	Map<NTA, Integer> condivisioni = model.simula(prob, duration);
+    	
+    	for(NTA n : condivisioni.keySet()) {
+    		txtResult.appendText(n.getNTACode()+ " "+ condivisioni.get(n)+"\n");
+    	}
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -91,15 +140,12 @@ public class FXMLController {
         assert txtDurata != null : "fx:id=\"txtDurata\" was not injected: check your FXML file 'Scene.fxml'.";
         assert txtProb != null : "fx:id=\"txtProb\" was not injected: check your FXML file 'Scene.fxml'.";
         assert txtResult != null : "fx:id=\"txtResult\" was not injected: check your FXML file 'Scene.fxml'.";
-        model = new Model();
-        cmbBorough.getItems().addAll(this.model.listaBorghi());
-       
-
-        
     }
     
     public void setModel(Model model) {
     	this.model = model;
+    	List<String> boroughs = model.getBoroughs();
+    	cmbBorough.getItems().addAll(boroughs) ;
     }
 
 }

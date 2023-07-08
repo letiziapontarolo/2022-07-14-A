@@ -1,9 +1,11 @@
 package it.polito.tdp.nyc.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
@@ -14,75 +16,72 @@ import it.polito.tdp.nyc.db.NYCDao;
 
 public class Model {
 	
-	private Graph<String, DefaultWeightedEdge> grafo;
-	private NYCDao dao;
-	private List<String> NTACode;
-	private List<Adiacenza> adiacenze;
+	private List<String> boroughs ;
+	private List<NTA> NTAs ;
+	private Graph<NTA, DefaultWeightedEdge> grafo ;
 	
-	public Model() {
-		dao = new NYCDao();
-		
-		
-		}
-	
-	public List<String> listaBorghi() {
-		List<String> listaBorghi = this.dao.listaBorghi();
-		return listaBorghi;
-	}
-	
-	public void creaGrafo(String borgo) {
-		
-		adiacenze = new ArrayList<>();
-		NTACode = new ArrayList<>();
-		grafo = new SimpleWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-		this.dao.creaGrafo(this.NTACode, borgo);
-		Graphs.addAllVertices(this.grafo, this.NTACode);
-		for (Adiacenza a : this.dao.getAdiacenze(this.NTACode, borgo)) {
-			adiacenze.add(a);
-			Graphs.addEdgeWithVertices(this.grafo, a.getNTA1(),
-			a.getNTA2(), a.getPeso());
-			}
-
-	}
-	
-	public String pesoArchi() {
-		
-		List<Adiacenza> result = new ArrayList<>();
-		int contatore = 0;
-		double peso = 0;
-		for (Adiacenza a : this.adiacenze) {
-			peso = peso + a.getPeso();
-			contatore = contatore + 1;
+	public List<String> getBoroughs() {
+		if(this.boroughs==null) {
+			NYCDao dao = new NYCDao() ;
+			this.boroughs = dao.getAllBoroughs() ;
 		}
 		
-		double pesoMedioArchi = peso/contatore;
+		return this.boroughs ;
+	}
+	
+	public void creaGrafo(String borough) {
+		NYCDao dao = new NYCDao() ;
+		this.NTAs = dao.getNTAbyBorough(borough) ;
+//		System.out.println(this.NTAs) ;
 		
-		for (Adiacenza a2 : adiacenze) {
-			if (a2.getPeso() > pesoMedioArchi) {
-				result.add(a2);
+		this.grafo = new SimpleWeightedGraph<>(DefaultWeightedEdge.class) ;
+		Graphs.addAllVertices(this.grafo, this.NTAs) ;
+		
+		for(NTA n1: this.NTAs) {
+			for(NTA n2: this.NTAs) {
+				if(n1.getNTACode().compareTo(n2.getNTACode())<0) { // !n1.equals(n2)
+					Set<String> unione = new HashSet<>() ;
+					unione.addAll(n1.getSSIDs()) ;
+					unione.addAll(n2.getSSIDs()) ;
+					Graphs.addEdge(this.grafo, n1, n2, unione.size()) ;
+				}
 			}
 		}
-		
-		int n = 0;
-		String str = "";
-		for (Adiacenza a3 : result) {
-			str = str + a3.getNTA1() + ", " + a3.getNTA2() + ", " + a3.getPeso() + "\n";
-			n = n + 1;
-		}
-		
-		
-		return "Peso medio: " + Double.toString(pesoMedioArchi) + "\n" 
-		+ "Archi con peso maggiore del peso medio: " + Integer.toString(n) + "\n" + str;
-		
 	}
 	
+	public List<Arco> analisiArchi() {
+		double media = 0.0 ;
+		for(DefaultWeightedEdge e: this.grafo.edgeSet()) {
+			media = media + this.grafo.getEdgeWeight(e) ;
+		}
+		media = media / this.grafo.edgeSet().size() ;
+		
+		List<Arco> result = new ArrayList<>();
+		for(DefaultWeightedEdge e: this.grafo.edgeSet()) {
+			if(this.grafo.getEdgeWeight(e)>media) {
+				result.add(new Arco(
+						this.grafo.getEdgeSource(e).getNTACode(),
+						this.grafo.getEdgeTarget(e).getNTACode(),
+						(int)this.grafo.getEdgeWeight(e)
+						)) ;
+			}
+		}
+		
+		Collections.sort(result);
+		return result ;
+	}
 	
 	public int numeroVertici() {
 		return this.grafo.vertexSet().size();
 		}
-	
 		 public int numeroArchi() {
 		return this.grafo.edgeSet().size();
 		}
 	
+	public Map<NTA, Integer> simula(double probShare, int durationShare) {
+		Simulator sim = new Simulator(this.grafo, probShare, durationShare) ;
+		sim.init();
+		sim.run();
+		return sim.getNumTotShare() ;
+	}
 }
